@@ -16,7 +16,11 @@
 
 import URL from 'url';
 import VM from 'vm';
+import FS from 'fs';
 import threads from 'worker_threads';
+import fetchSync from 'sync-fetch';
+import fetch from 'cross-fetch';
+import WebSocket from 'ws';
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -108,6 +112,7 @@ function mainThread() {
 				value: worker
 			});
 			worker.on('message', data => {
+				// console.log('worker message:', data);
 				const event = new Event('message');
 				event.data = data;
 				this.dispatchEvent(event);
@@ -125,6 +130,9 @@ function mainThread() {
 		}
 		terminate() {
 			this[WORKER].terminate();
+		}
+		importScripts(...scripts) {
+			this[WORKER].importScripts(...scripts);
 		}
 	}
 	Worker.prototype.onmessage = Worker.prototype.onerror = Worker.prototype.onclose = null;
@@ -156,6 +164,9 @@ function workerThread() {
 	});
 
 	class WorkerGlobalScope extends EventTarget {
+		// expose apis
+		fetch = fetch
+		WebSocket = WebSocket
 		postMessage(data, transferList) {
 			threads.parentPort.postMessage(data, transferList);
 		}
@@ -163,12 +174,32 @@ function workerThread() {
 		close() {
 			process.exit();
 		}
+		importScripts(...scripts) {
+			let combined = [];
+			for (const script of scripts) {
+				// console.log('worker import script:', script);
+				let code = '';
+				if (script.indexOf('http') === 0) {
+					try {
+						code = fetchSync(script).text();
+					}
+					catch (err) {
+						console.error(err);
+					}
+				}
+				else {
+					code = FS.readFileSync(script, 'utf-8');
+				}
+				combined.push(code);
+			}
+			VM.runInThisContext(combined.join('\n'));
+		}
 	}
 	let proto = Object.getPrototypeOf(global);
 	delete proto.constructor;
 	Object.defineProperties(WorkerGlobalScope.prototype, proto);
 	proto = Object.setPrototypeOf(global, new WorkerGlobalScope());
-	['postMessage', 'addEventListener', 'removeEventListener', 'dispatchEvent'].forEach(fn => {
+	['postMessage', 'addEventListener', 'removeEventListener', 'dispatchEvent', 'importScripts'].forEach(fn => {
 		proto[fn] = proto[fn].bind(global);
 	});
 	global.name = name;
@@ -218,5 +249,7 @@ function parseDataUrl(url) {
 		default:
 			throw Error('Unknown Data URL encoding "' + encoding + '"');
 	}
+	// console.log('worker script type:', type);
+	// console.log('worker script contents:', data);
 	return { type, data };
 }
