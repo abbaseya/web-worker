@@ -186,6 +186,7 @@ function workerThread() {
 				let code = '';
 				if (script.indexOf('http') === 0) {
 					try {
+						// code = fetchSync(script).text();
 						code = fetchSync(script).text();
 					}
 					catch (err) {
@@ -193,7 +194,7 @@ function workerThread() {
 					}
 				}
 				else {
-					code = FS.readFileSync(script, 'utf-8');
+					code = FS.readFileSync(script, 'utf-8').toString();
 				}
 				combined.push(code);
 			}
