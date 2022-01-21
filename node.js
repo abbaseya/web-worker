@@ -20,7 +20,10 @@ import FS from 'fs';
 import threads from 'worker_threads';
 import fetchSync from 'sync-fetch';
 import fetch from 'cross-fetch';
-import WebSocket from 'ws';
+import indexedDB from 'fake-indexeddb';
+import { JSDOM } from 'jsdom';
+
+const { WebSocket } = new JSDOM(``).window;
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -140,10 +143,15 @@ function mainThread() {
 }
 
 function workerThread() {
+
 	let { mod, name, type } = threads.workerData;
 
 	// turn global into a mock WorkerGlobalScope
 	const self = global.self = global;
+	// expose apis
+	self.fetch = fetch;
+	self.WebSocket = WebSocket;
+	self.indexedDB = indexedDB;
 
 	// enqueue messages to dispatch after modules are loaded
 	let q = [];
@@ -164,9 +172,6 @@ function workerThread() {
 	});
 
 	class WorkerGlobalScope extends EventTarget {
-		// expose apis
-		fetch = fetch
-		WebSocket = WebSocket
 		postMessage(data, transferList) {
 			threads.parentPort.postMessage(data, transferList);
 		}
@@ -199,7 +204,7 @@ function workerThread() {
 	delete proto.constructor;
 	Object.defineProperties(WorkerGlobalScope.prototype, proto);
 	proto = Object.setPrototypeOf(global, new WorkerGlobalScope());
-	['postMessage', 'addEventListener', 'removeEventListener', 'dispatchEvent', 'importScripts'].forEach(fn => {
+	['postMessage', 'addEventListener', 'removeEventListener', 'dispatchEvent'].forEach(fn => {
 		proto[fn] = proto[fn].bind(global);
 	});
 	global.name = name;
