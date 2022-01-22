@@ -14,4 +14,5 @@
  * limitations under the License.
  */
 
-export default Worker;
+// export default Worker;
+module.exports = Worker;

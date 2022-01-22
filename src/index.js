@@ -21,9 +21,7 @@ import threads from 'worker_threads';
 import fetchSync from 'sync-fetch';
 import fetch from 'cross-fetch';
 import indexedDB from 'fake-indexeddb';
-import { JSDOM } from 'jsdom';
-
-const { WebSocket } = new JSDOM(``).window;
+import { WebSocket } from 'mock-socket';
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -77,7 +75,8 @@ function Event(type, target) {
 
 // this module is used self-referentially on both sides of the
 // thread boundary, but behaves differently in each context.
-export default threads.isMainThread ? mainThread() : workerThread();
+// export default threads.isMainThread ? mainThread() : workerThread();
+module.exports = threads.isMainThread ? mainThread() : workerThread();
 
 const baseUrl = URL.pathToFileURL(process.cwd() + '/');
 
@@ -145,13 +144,9 @@ function mainThread() {
 function workerThread() {
 
 	let { mod, name, type } = threads.workerData;
-
+	
 	// turn global into a mock WorkerGlobalScope
 	const self = global.self = global;
-	// expose apis
-	self.fetch = fetch;
-	self.WebSocket = WebSocket;
-	self.indexedDB = indexedDB;
 
 	// enqueue messages to dispatch after modules are loaded
 	let q = [];
@@ -186,11 +181,10 @@ function workerThread() {
 				let code = '';
 				if (script.indexOf('http') === 0) {
 					try {
-						// code = fetchSync(script).text();
 						code = fetchSync(script).text();
 					}
 					catch (err) {
-						console.error(err);
+						console.error('remote file error:', err);
 					}
 				}
 				else {
@@ -200,6 +194,10 @@ function workerThread() {
 			}
 			VM.runInThisContext(combined.join('\n'));
 		}
+		// expose apis
+		fetch = fetch;
+		indexedDB = indexedDB;
+		WebSocket = WebSocket;
 	}
 	let proto = Object.getPrototypeOf(global);
 	delete proto.constructor;
