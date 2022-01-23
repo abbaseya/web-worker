@@ -18,10 +18,9 @@ import URL from 'url';
 import VM from 'vm';
 import FS from 'fs';
 import threads from 'worker_threads';
-import fetchSync from 'sync-fetch';
 import fetch from 'cross-fetch';
 import indexedDB from 'fake-indexeddb';
-import { WebSocket } from 'mock-socket';
+import WebSocket from 'ws';
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -81,7 +80,7 @@ module.exports = threads.isMainThread ? mainThread() : workerThread();
 const baseUrl = URL.pathToFileURL(process.cwd() + '/');
 
 function mainThread() {
-
+	
 	/**
 	 * A web-compatible Worker implementation atop Node's worker_threads.
 	 *  - uses DOM-style events (Event.data, Event.type, etc)
@@ -114,7 +113,6 @@ function mainThread() {
 				value: worker
 			});
 			worker.on('message', data => {
-				// console.log('worker message:', data);
 				const event = new Event('message');
 				event.data = data;
 				this.dispatchEvent(event);
@@ -142,7 +140,7 @@ function mainThread() {
 }
 
 function workerThread() {
-
+	
 	let { mod, name, type } = threads.workerData;
 	
 	// turn global into a mock WorkerGlobalScope
@@ -177,20 +175,7 @@ function workerThread() {
 		importScripts(...scripts) {
 			let combined = [];
 			for (const script of scripts) {
-				// console.log('worker import script:', script);
-				let code = '';
-				if (script.indexOf('http') === 0) {
-					try {
-						code = fetchSync(script).text();
-					}
-					catch (err) {
-						console.error('remote file error:', err);
-					}
-				}
-				else {
-					code = FS.readFileSync(script, 'utf-8').toString();
-				}
-				combined.push(code);
+				combined.push(FS.readFileSync(script, 'utf-8').toString());
 			}
 			VM.runInThisContext(combined.join('\n'));
 		}
@@ -253,7 +238,5 @@ function parseDataUrl(url) {
 		default:
 			throw Error('Unknown Data URL encoding "' + encoding + '"');
 	}
-	// console.log('worker script type:', type);
-	// console.log('worker script contents:', data);
 	return { type, data };
 }
