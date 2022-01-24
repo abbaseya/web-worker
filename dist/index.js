@@ -7223,6 +7223,7 @@ var require_RecordStore = __commonJS({
     var FDBKeyRange_1 = require_FDBKeyRange();
     var binarySearch_1 = require_binarySearch();
     var cmp_1 = require_cmp();
+    var extractKey_1 = require_extractKey();
     var RecordStore = function() {
       function RecordStore2(initRecords) {
         var e_1, _a;
@@ -7370,7 +7371,15 @@ var require_RecordStore = __commonJS({
       };
       RecordStore2.prototype.getRecords = function() {
         return this.records.map(function(record) {
-          return { key: record.key, value: record.value };
+          return {
+            key: record.key,
+            value: record.value
+          };
+        });
+      };
+      RecordStore2.prototype.getIndexKeys = function(keyPath) {
+        return this.records.map(function(record) {
+          return keyPath ? extractKey_1.default(keyPath, record.value) : null;
         });
       };
       RecordStore2.prototype.getKeys = function() {
@@ -8504,6 +8513,8 @@ var require_ObjectStore = __commonJS({
                 throw e_1.error;
             }
           }
+          console.log("records:", this.records);
+          console.log("rawIndexes:", this.rawIndexes);
         } else {
           this.saveObjectStore();
         }
@@ -8744,7 +8755,7 @@ var require_ObjectStore = __commonJS({
           name: this.name,
           records: this.records.getRecords(),
           indexes: {
-            keys: this.rawIndexes.keys(),
+            keys: this.records.getIndexKeys(this.keyPath),
             values: this.records.getKeys()
           }
         }));
