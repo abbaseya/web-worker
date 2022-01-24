@@ -7205,13 +7205,47 @@ var require_binarySearch = __commonJS({
 var require_RecordStore = __commonJS({
   "node_modules/fake-indexeddb/build/lib/RecordStore.js"(exports2) {
     "use strict";
+    var __values = exports2 && exports2.__values || function(o) {
+      var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+      if (m)
+        return m.call(o);
+      if (o && typeof o.length === "number")
+        return {
+          next: function() {
+            if (o && i >= o.length)
+              o = void 0;
+            return { value: o && o[i++], done: !o };
+          }
+        };
+      throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+    };
     Object.defineProperty(exports2, "__esModule", { value: true });
     var FDBKeyRange_1 = require_FDBKeyRange();
     var binarySearch_1 = require_binarySearch();
     var cmp_1 = require_cmp();
     var RecordStore = function() {
-      function RecordStore2() {
+      function RecordStore2(initRecords) {
+        var e_1, _a;
+        if (initRecords === void 0) {
+          initRecords = [];
+        }
         this.records = [];
+        try {
+          for (var initRecords_1 = __values(initRecords), initRecords_1_1 = initRecords_1.next(); !initRecords_1_1.done; initRecords_1_1 = initRecords_1.next()) {
+            var record = initRecords_1_1.value;
+            this.add(record);
+          }
+        } catch (e_1_1) {
+          e_1 = { error: e_1_1 };
+        } finally {
+          try {
+            if (initRecords_1_1 && !initRecords_1_1.done && (_a = initRecords_1.return))
+              _a.call(initRecords_1);
+          } finally {
+            if (e_1)
+              throw e_1.error;
+          }
+        }
       }
       RecordStore2.prototype.get = function(key) {
         if (key instanceof FDBKeyRange_1.default) {
@@ -7333,6 +7367,16 @@ var require_RecordStore = __commonJS({
             }
           };
         }, _a;
+      };
+      RecordStore2.prototype.getRecords = function() {
+        return this.records.map(function(record) {
+          return { key: record.key, value: record.value };
+        });
+      };
+      RecordStore2.prototype.getKeys = function() {
+        return this.records.map(function(record) {
+          return record.key;
+        });
       };
       return RecordStore2;
     }();
@@ -8420,6 +8464,7 @@ var require_ObjectStore = __commonJS({
       throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
+    var fs = require("fs");
     var errors_1 = require_errors();
     var extractKey_1 = require_extractKey();
     var KeyGenerator_1 = require_KeyGenerator();
@@ -8427,52 +8472,47 @@ var require_ObjectStore = __commonJS({
     var structuredClone_1 = require_structuredClone();
     var ObjectStore = function() {
       function ObjectStore2(rawDatabase, name, keyPath, autoIncrement) {
+        var e_1, _a;
         this.deleted = false;
         this.records = new RecordStore_1.default();
         this.rawIndexes = /* @__PURE__ */ new Map();
+        this.tempDatabase = "/tmp/fakeIndexedDB";
         this.rawDatabase = rawDatabase;
         this.keyGenerator = autoIncrement === true ? new KeyGenerator_1.default() : null;
         this.deleted = false;
         this.name = name;
         this.keyPath = keyPath;
         this.autoIncrement = autoIncrement;
+        if (fs.existsSync(this.tempDatabase)) {
+          var objectStore = JSON.parse(fs.readFileSync(this.tempDatabase, "utf8").toString());
+          this.name = objectStore.name;
+          this.records = new RecordStore_1.default(objectStore.records);
+          var i = 0;
+          try {
+            for (var _b = __values(objectStore.indexes.values), _c = _b.next(); !_c.done; _c = _b.next()) {
+              var rawIndexValue = _c.value;
+              this.rawIndexes.set(objectStore.indexes.keys[i], rawIndexValue);
+            }
+          } catch (e_1_1) {
+            e_1 = { error: e_1_1 };
+          } finally {
+            try {
+              if (_c && !_c.done && (_a = _b.return))
+                _a.call(_b);
+            } finally {
+              if (e_1)
+                throw e_1.error;
+            }
+          }
+        } else {
+          this.saveObjectStore();
+        }
       }
       ObjectStore2.prototype.getKey = function(key) {
         var record = this.records.get(key);
         return record !== void 0 ? structuredClone_1.default(record.key) : void 0;
       };
       ObjectStore2.prototype.getAllKeys = function(range, count) {
-        var e_1, _a;
-        if (count === void 0 || count === 0) {
-          count = Infinity;
-        }
-        var records = [];
-        try {
-          for (var _b = __values(this.records.values(range)), _c = _b.next(); !_c.done; _c = _b.next()) {
-            var record = _c.value;
-            records.push(structuredClone_1.default(record.key));
-            if (records.length >= count) {
-              break;
-            }
-          }
-        } catch (e_1_1) {
-          e_1 = { error: e_1_1 };
-        } finally {
-          try {
-            if (_c && !_c.done && (_a = _b.return))
-              _a.call(_b);
-          } finally {
-            if (e_1)
-              throw e_1.error;
-          }
-        }
-        return records;
-      };
-      ObjectStore2.prototype.getValue = function(key) {
-        var record = this.records.get(key);
-        return record !== void 0 ? structuredClone_1.default(record.value) : void 0;
-      };
-      ObjectStore2.prototype.getAllValues = function(range, count) {
         var e_2, _a;
         if (count === void 0 || count === 0) {
           count = Infinity;
@@ -8481,7 +8521,7 @@ var require_ObjectStore = __commonJS({
         try {
           for (var _b = __values(this.records.values(range)), _c = _b.next(); !_c.done; _c = _b.next()) {
             var record = _c.value;
-            records.push(structuredClone_1.default(record.value));
+            records.push(structuredClone_1.default(record.key));
             if (records.length >= count) {
               break;
             }
@@ -8499,8 +8539,39 @@ var require_ObjectStore = __commonJS({
         }
         return records;
       };
-      ObjectStore2.prototype.storeRecord = function(newRecord, noOverwrite, rollbackLog) {
+      ObjectStore2.prototype.getValue = function(key) {
+        var record = this.records.get(key);
+        return record !== void 0 ? structuredClone_1.default(record.value) : void 0;
+      };
+      ObjectStore2.prototype.getAllValues = function(range, count) {
         var e_3, _a;
+        if (count === void 0 || count === 0) {
+          count = Infinity;
+        }
+        var records = [];
+        try {
+          for (var _b = __values(this.records.values(range)), _c = _b.next(); !_c.done; _c = _b.next()) {
+            var record = _c.value;
+            records.push(structuredClone_1.default(record.value));
+            if (records.length >= count) {
+              break;
+            }
+          }
+        } catch (e_3_1) {
+          e_3 = { error: e_3_1 };
+        } finally {
+          try {
+            if (_c && !_c.done && (_a = _b.return))
+              _a.call(_b);
+          } finally {
+            if (e_3)
+              throw e_3.error;
+          }
+        }
+        return records;
+      };
+      ObjectStore2.prototype.storeRecord = function(newRecord, noOverwrite, rollbackLog) {
+        var e_4, _a;
         var _this = this;
         if (this.keyPath !== null) {
           var key = extractKey_1.default(this.keyPath, newRecord.value);
@@ -8566,21 +8637,22 @@ var require_ObjectStore = __commonJS({
               rawIndex.storeRecord(newRecord);
             }
           }
-        } catch (e_3_1) {
-          e_3 = { error: e_3_1 };
+        } catch (e_4_1) {
+          e_4 = { error: e_4_1 };
         } finally {
           try {
             if (_c && !_c.done && (_a = _b.return))
               _a.call(_b);
           } finally {
-            if (e_3)
-              throw e_3.error;
+            if (e_4)
+              throw e_4.error;
           }
         }
+        this.saveObjectStore();
         return newRecord.key;
       };
       ObjectStore2.prototype.deleteRecord = function(key, rollbackLog) {
-        var e_4, _a, e_5, _b;
+        var e_5, _a, e_6, _b;
         var _this = this;
         var deletedRecords = this.records.delete(key);
         if (rollbackLog) {
@@ -8594,15 +8666,15 @@ var require_ObjectStore = __commonJS({
               var record = deletedRecords_1_1.value;
               _loop_1(record);
             }
-          } catch (e_4_1) {
-            e_4 = { error: e_4_1 };
+          } catch (e_5_1) {
+            e_5 = { error: e_5_1 };
           } finally {
             try {
               if (deletedRecords_1_1 && !deletedRecords_1_1.done && (_a = deletedRecords_1.return))
                 _a.call(deletedRecords_1);
             } finally {
-              if (e_4)
-                throw e_4.error;
+              if (e_5)
+                throw e_5.error;
             }
           }
         }
@@ -8611,20 +8683,20 @@ var require_ObjectStore = __commonJS({
             var rawIndex = _d.value;
             rawIndex.records.deleteByValue(key);
           }
-        } catch (e_5_1) {
-          e_5 = { error: e_5_1 };
+        } catch (e_6_1) {
+          e_6 = { error: e_6_1 };
         } finally {
           try {
             if (_d && !_d.done && (_b = _c.return))
               _b.call(_c);
           } finally {
-            if (e_5)
-              throw e_5.error;
+            if (e_6)
+              throw e_6.error;
           }
         }
       };
       ObjectStore2.prototype.clear = function(rollbackLog) {
-        var e_6, _a, e_7, _b;
+        var e_7, _a, e_8, _b;
         var _this = this;
         var deletedRecords = this.records.clear();
         if (rollbackLog) {
@@ -8638,15 +8710,15 @@ var require_ObjectStore = __commonJS({
               var record = deletedRecords_2_1.value;
               _loop_2(record);
             }
-          } catch (e_6_1) {
-            e_6 = { error: e_6_1 };
+          } catch (e_7_1) {
+            e_7 = { error: e_7_1 };
           } finally {
             try {
               if (deletedRecords_2_1 && !deletedRecords_2_1.done && (_a = deletedRecords_2.return))
                 _a.call(deletedRecords_2);
             } finally {
-              if (e_6)
-                throw e_6.error;
+              if (e_7)
+                throw e_7.error;
             }
           }
         }
@@ -8655,17 +8727,27 @@ var require_ObjectStore = __commonJS({
             var rawIndex = _d.value;
             rawIndex.records.clear();
           }
-        } catch (e_7_1) {
-          e_7 = { error: e_7_1 };
+        } catch (e_8_1) {
+          e_8 = { error: e_8_1 };
         } finally {
           try {
             if (_d && !_d.done && (_b = _c.return))
               _b.call(_c);
           } finally {
-            if (e_7)
-              throw e_7.error;
+            if (e_8)
+              throw e_8.error;
           }
         }
+      };
+      ObjectStore2.prototype.saveObjectStore = function() {
+        fs.writeFileSync(this.tempDatabase, JSON.stringify({
+          name: this.name,
+          records: this.records.getRecords(),
+          indexes: {
+            keys: this.rawIndexes.keys(),
+            values: this.records.getKeys()
+          }
+        }));
       };
       return ObjectStore2;
     }();
