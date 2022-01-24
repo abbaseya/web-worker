@@ -18,7 +18,7 @@ import URL from 'url';
 import VM from 'vm';
 import FS from 'fs';
 import threads from 'worker_threads';
-import fetch,{Headers} from 'cross-fetch';
+import fetch, { Headers } from 'cross-fetch';
 import indexedDB from 'fake-indexeddb';
 import WebSocket from 'ws';
 import Blob from 'cross-blob';
