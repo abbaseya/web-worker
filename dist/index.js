@@ -8513,8 +8513,6 @@ var require_ObjectStore = __commonJS({
                 throw e_1.error;
             }
           }
-          console.log("records:", this.records);
-          console.log("rawIndexes:", this.rawIndexes);
         } else {
           this.saveObjectStore();
         }
