@@ -18,9 +18,10 @@ import URL from 'url';
 import VM from 'vm';
 import FS from 'fs';
 import threads from 'worker_threads';
-import fetch from 'cross-fetch';
+import fetch,{Headers} from 'cross-fetch';
 import indexedDB from 'fake-indexeddb';
 import WebSocket from 'ws';
+import Blob from 'cross-blob';
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -181,8 +182,10 @@ function workerThread() {
 		}
 		// expose apis
 		fetch = fetch;
+		Headers = Headers;
 		indexedDB = indexedDB;
 		WebSocket = WebSocket;
+		Blob = Blob;
 	}
 	let proto = Object.getPrototypeOf(global);
 	delete proto.constructor;
