@@ -12,7 +12,7 @@
     "index.d.ts"
   ],
   "scripts": {
-    "build": "./node_modules/esbuild/bin/esbuild --bundle src/index.js --platform=node --outfile=dist/index.js",
+    "build": "./node_modules/esbuild/bin/esbuild --bundle node_modules/sync-fetch/worker.js --platform=node --outfile=dist/worker.js && ./node_modules/esbuild/bin/esbuild --bundle src/index.js --platform=node --outfile=dist/index.js",
     "test": "eslint 'src/*.js' test && node --experimental-modules ./node_modules/.bin/ava"
   },
   "babel": {
@@ -55,6 +55,7 @@
     "eslint": "^6.8.0",
     "eslint-config-developit": "^1.1.1",
     "fake-indexeddb": "git+ssh://git@github.com/abbaseya/fakeIndexedDB.git",
+    "sync-fetch": "^0.3.1",
     "ws": "^8.4.2"
   }
 }

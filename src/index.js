@@ -18,10 +18,11 @@ import URL from 'url';
 import VM from 'vm';
 import FS from 'fs';
 import threads from 'worker_threads';
-import fetch, { Headers } from 'cross-fetch';
+import fetchSync from 'sync-fetch';
+import { Headers, Request, Response } from 'cross-fetch';
+import Blob from 'cross-blob';
 import indexedDB from 'fake-indexeddb';
 import WebSocket from 'ws';
-import Blob from 'cross-blob';
 
 const WORKER = Symbol.for('worker');
 const EVENTS = Symbol.for('events');
@@ -181,11 +182,16 @@ function workerThread() {
 			VM.runInThisContext(combined.join('\n'));
 		}
 		// expose apis
-		fetch = fetch;
-		Headers = Headers;
-		indexedDB = indexedDB;
-		WebSocket = WebSocket;
-		Blob = Blob;
+		fetch(url, opts) {
+			// we can't affort to use async modules here (i.e. fetch, axios, XMLHttpRequest), the request will get aborted as soon as the worker thread terminates
+			return fetchSync(url, opts);
+		}
+		Headers = Headers
+		Request = Request
+		Response = Response
+		indexedDB = indexedDB
+		WebSocket = WebSocket
+		Blob = Blob
 	}
 	let proto = Object.getPrototypeOf(global);
 	delete proto.constructor;
@@ -242,4 +248,13 @@ function parseDataUrl(url) {
 			throw Error('Unknown Data URL encoding "' + encoding + '"');
 	}
 	return { type, data };
+}
+
+function toBuffer(ab) {
+	const buf = Buffer.alloc(ab.byteLength);
+	const view = new Uint8Array(ab);
+	for (let i = 0; i < buf.length; ++i) {
+		buf[i] = view[i];
+	}
+	return buf;
 }
